@@ -1,0 +1,20 @@
+
+[packages]
+
+[packages.argd]
+type = "file"
+description = "argd is a argument parser/command system written in D, its required because whole envman application depends on it."
+obtain = "https://github.com/kerem3338/argd"
+path = ["source", "argd.d"]
+
+
+[project]
+envman_version = "0.0.1"
+authors = ["Kerem ATA"]
+license = "MIT"
+name = "envman"
+repository = "https://github.com/kerem3338/envman"
+description = "Environment/Package Manager for Your Needs."
+homepage = "https://github.com/kerem3338/envman"
+version = "0.0.1"
+keywords = ["dlang","envman"]

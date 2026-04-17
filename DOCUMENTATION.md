@@ -1,6 +1,6 @@
 # `envman`
 
-Envman 0.0.1, environment/package manager
+Envman 0.0.2, environment/package manager
 
 **Usage:** `envman [options]`
 
@@ -9,9 +9,10 @@ Envman 0.0.1, environment/package manager
 | Option | Description |
 |--------|-------------|
 | `-h, --help` | Show this help message |
-| `-v, --verbose` | Enable verbose output |
+| `-V, --verbose` | Enable verbose output |
 | `-q, --quiet` | Suppress output |
 | `-gd, --gen-docs` | Generate markdown documentation for all commands |
+| `-gh, --gen-html` | Generate HTML documentation for all commands |
 | `-v, --version` | Version of the envman |
 
 ## Subcommands
@@ -23,6 +24,69 @@ Information about the envman
 **Usage:** `info [options]`
 
 ### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
+## `config`
+
+Manage user configuration
+
+**Usage:** `config [options]`
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
+### Subcommands
+
+### `list`
+
+List all configuration values
+
+**Usage:** `list [options]`
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
+### `set`
+
+Set a configuration value
+
+**Usage:** `set <key> <value>`
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
+### `get`
+
+Get a configuration value
+
+**Usage:** `get <key>`
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+| `-e, --execute` | Execute value of the config key as a shell command |
+
+### `delete`
+
+Delete a configuration value
+
+**Usage:** `delete <key>`
+
+#### Options
 
 | Option | Description |
 |--------|-------------|
@@ -56,6 +120,18 @@ Onefile package system
 
 ### Subcommands
 
+### `import`
+
+Imports and registers multiple packages from a registry list file
+
+**Usage:** `import <registry_list_file>.toml`
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
 ### `info`
 
 Information about a registery package
@@ -67,10 +143,13 @@ Information about a registery package
 | Option | Description |
 |--------|-------------|
 | `-h, --help` | Show this help message |
+| `-p, --path` | Get path of the package |
+| `-d, --dir` | Give the directory path of the package (for local packages) |
+| `-e, --edit` | Open the path in users text editor |
 
 ### `add`
 
-Adds a package requirement to packages.envman in the current directory
+Adds a package requirement to project.envman in the current directory
 
 **Usage:** `add <package alias> <destination path>`
 
@@ -82,7 +161,7 @@ Adds a package requirement to packages.envman in the current directory
 
 ### `drop`
 
-Removes a package entry from packages.envman in the current directory
+Removes a package entry from project.envman in the current directory
 
 **Usage:** `drop <package alias>`
 
@@ -94,9 +173,33 @@ Removes a package entry from packages.envman in the current directory
 
 ### `register`
 
-Registers a file/directory as a package on global package registery
+Registers a file/directory/url or .envman.package as a package on global package registery
 
-**Usage:** `register <package alias> <package path>`
+**Usage:** `register <package alias> <package path> OR <package_file>.envman.package`
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
+### `inspect`
+
+Shows detailed information about a local project package dependency
+
+**Usage:** `inspect [options]`
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
+### `run`
+
+Runs an action (like 'run' or 'build') defined in a package's metadata
+
+**Usage:** `run <package alias> [action] [args...]`
 
 #### Options
 
@@ -106,7 +209,7 @@ Registers a file/directory as a package on global package registery
 
 ### `check`
 
-Checks packages in packages.envman without installing
+Checks packages in project.envman without installing
 
 **Usage:** `check [target directory path]`
 
@@ -116,10 +219,11 @@ Checks packages in packages.envman without installing
 |--------|-------------|
 | `-h, --help` | Show this help message |
 | `-fix, --fix` | Removes unregistered (unknown) packages from packages.envman file |
+| `-d, --details` | Gives more details about the project |
 
 ### `install`
 
-Installs packages from packages.envman into the current directory
+Installs packages from project.envman into the current directory
 
 **Usage:** `install [target directory path]`
 
@@ -128,10 +232,11 @@ Installs packages from packages.envman into the current directory
 | Option | Description |
 |--------|-------------|
 | `-h, --help` | Show this help message |
+| `-s, --symlink` | Use symlinks for local packages instead of copying |
 
 ### `upgrade`
 
-Upgrades packages from packages.envman by checking if the source is modified
+Upgrades packages from project.envman by checking if the source is modified
 
 **Usage:** `upgrade [target directory path]`
 
@@ -140,6 +245,7 @@ Upgrades packages from packages.envman by checking if the source is modified
 | Option | Description |
 |--------|-------------|
 | `-h, --help` | Show this help message |
+| `-s, --symlink` | Use symlinks for local packages instead of copying |
 
 ### `remove`
 
@@ -165,6 +271,44 @@ List all packages in global registery
 |--------|-------------|
 | `-h, --help` | Show this help message |
 
+## `project`
+
+Manage project configuration (project.envman)
+
+**Usage:** `project [options]`
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
+### Subcommands
+
+### `info`
+
+Display information about the current project
+
+**Usage:** `info [options]`
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
+### `init`
+
+Initialize a new project in the current directory
+
+**Usage:** `init [options]`
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
 ## `path`
 
 Show the save path of envman or manage paths
@@ -179,6 +323,18 @@ Show the save path of envman or manage paths
 
 ### Subcommands
 
+### `add`
+
+Add a directory or file path with a slug
+
+**Usage:** `add <slug> <path>`
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
 ### `delete`
 
 Delete a directory or file path for a slug
@@ -191,17 +347,19 @@ Delete a directory or file path for a slug
 |--------|-------------|
 | `-h, --help` | Show this help message |
 
-### `append`
+### `set`
 
-Append a directory or file path with a slug
+Sets the path for the current shell or permanently
 
-**Usage:** `append <slug> <path>`
+**Usage:** `set <slug> [-p|--path] [-g|--global]`
 
 #### Options
 
 | Option | Description |
 |--------|-------------|
 | `-h, --help` | Show this help message |
+| `-p, --path` | Adds to current shell PATH (prints set command) |
+| `-g, --global` | Adds with setx permanently (Windows only) |
 
 ### `search`
 
@@ -228,12 +386,14 @@ Gets the path of a slug entry
 | `-h, --help` | Show this help message |
 | `-o, --open` | Open the path in default application |
 | `-p, --path` | Adds the path to system path |
+| `-c, --cd` | Change directory |
+| `-e, --edit` | Open the path in a editor |
 
-### `list`
+### `edit`
 
-Lists all paths
+Edit an existing path for a slug
 
-**Usage:** `list `
+**Usage:** `edit <slug> <path>`
 
 #### Options
 
@@ -241,11 +401,11 @@ Lists all paths
 |--------|-------------|
 | `-h, --help` | Show this help message |
 
-### `edit`
+### `list`
 
-Edit an existing path for a slug
+Lists all paths
 
-**Usage:** `edit <slug> <path>`
+**Usage:** `list `
 
 #### Options
 

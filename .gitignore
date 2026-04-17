@@ -7,6 +7,7 @@ docs/
 envman.so
 envman.dylib
 envman.dll
+envman.pdb
 envman.a
 envman.lib
 envman-test-*
@@ -15,5 +16,6 @@ envman-test-*
 *.o
 *.obj
 *.lst
+__*__
 
 local.envman

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation - envman</title>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #38bdf8; --dim: #94a3b8; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; margin: 0; padding: 2rem; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .command-card { background: var(--card); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; border-left: 4px solid var(--accent); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3); }
+        .command-card.sub { border-left-color: var(--dim); background: #162032; }
+        h1, h2, h3, h4 { color: var(--accent); margin-top: 0; }
+        h2 { color: #7dd3fc; }
+        h3, h4 { color: var(--dim); }
+        code { background: #000; padding: 0.2rem 0.4rem; border-radius: 4px; font-family: monospace; color: #ef4444; }
+        .usage { background: #000; padding: 1rem; border-radius: 8px; font-family: monospace; overflow-x: auto; margin: 1rem 0; border: 1px solid #334155; }
+        table { width: 100%; border-collapse: collapse; margin-block: 1rem; }
+        th { text-align: left; border-bottom: 2px solid var(--dim); padding: 0.5rem; color: var(--accent); }
+        td { padding: 0.5rem; border-bottom: 1px solid #334155; }
+        .subcommands { margin-left: 1.5rem; border-left: 2px dashed #334155; padding-left: 1.5rem; margin-top: 1rem; }
+    </style>
+</head>
+<body>
+<div class="container">
+<div class="command-card">
+  <h1>envman</h1>
+  <p>Envman 0.0.2, environment/package manager</p>
+  <div class="usage"><strong>Usage:</strong> envman [options]</div>
+  <h2>Options</h2>
+  <table>
+    <tr><th>Flag</th><th>Description</th></tr>
+    <tr><td><code>-h, --help</code></td><td>Show this help message</td></tr>
+    <tr><td><code>-V, --verbose</code></td><td>Enable verbose output</td></tr>
+    <tr><td><code>-q, --quiet</code></td><td>Suppress output</td></tr>
+    <tr><td><code>-gd, --gen-docs</code></td><td>Generate markdown documentation for all commands</td></tr>
+    <tr><td><code>-gh, --gen-html</code></td><td>Generate HTML documentation for all commands</td></tr>
+    <tr><td><code>-v, --version</code></td><td>Version of the envman</td></tr>
+  </table>
+</div>
+<div class="subcommands">
+<div class="command-card sub">
+  <h2>info</h2>
+  <p>Information about the envman</p>
+  <div class="usage"><strong>Usage:</strong> info [options]</div>
+</div>
+<div class="command-card sub">
+  <h2>config</h2>
+  <p>Manage user configuration</p>
+  <div class="usage"><strong>Usage:</strong> config [options]</div>
+</div>
+<div class="subcommands">
+<div class="command-card sub">
+  <h3>list</h3>
+  <p>List all configuration values</p>
+  <div class="usage"><strong>Usage:</strong> list [options]</div>
+</div>
+<div class="command-card sub">
+  <h3>set</h3>
+  <p>Set a configuration value</p>
+  <div class="usage"><strong>Usage:</strong> set &lt;key&gt; &lt;value&gt;</div>
+</div>
+<div class="command-card sub">
+  <h3>get</h3>
+  <p>Get a configuration value</p>
+  <div class="usage"><strong>Usage:</strong> get &lt;key&gt;</div>
+  <h4>Options</h4>
+  <table>
+    <tr><th>Flag</th><th>Description</th></tr>
+    <tr><td><code>-h, --help</code></td><td>Show this help message</td></tr>
+    <tr><td><code>-e, --execute</code></td><td>Execute value of the config key as a shell command</td></tr>
+  </table>
+</div>
+<div class="command-card sub">
+  <h3>delete</h3>
+  <p>Delete a configuration value</p>
+  <div class="usage"><strong>Usage:</strong> delete &lt;key&gt;</div>
+</div>
+</div>
+<div class="command-card sub">
+  <h2>set</h2>
+  <p>Sets the path for the current shell or permanently</p>
+  <div class="usage"><strong>Usage:</strong> set &lt;slug&gt; [-p|--path] [-g|--global]</div>
+  <h3>Options</h3>
+  <table>
+    <tr><th>Flag</th><th>Description</th></tr>
+    <tr><td><code>-h, --help</code></td><td>Show this help message</td></tr>
+    <tr><td><code>-p, --path</code></td><td>Adds to current shell PATH (prints set command)</td></tr>
+    <tr><td><code>-g, --global</code></td><td>Adds with setx permanently (Windows only)</td></tr>
+  </table>
+</div>
+<div class="command-card sub">
+  <h2>pkg</h2>
+  <p>Onefile package system</p>
+  <div class="usage"><strong>Usage:</strong> pkg [options]</div>
+</div>
+<div class="subcommands">
+<div class="command-card sub">
+  <h3>import</h3>
+  <p>Imports and registers multiple packages from a registry list file</p>
+  <div class="usage"><strong>Usage:</strong> import &lt;registry_list_file&gt;.toml</div>
+</div>
+<div class="command-card sub">
+  <h3>info</h3>
+  <p>Information about a registery package</p>
+  <div class="usage"><strong>Usage:</strong> info &lt;package name&gt;</div>
+  <h4>Options</h4>
+  <table>
+    <tr><th>Flag</th><th>Description</th></tr>
+    <tr><td><code>-h, --help</code></td><td>Show this help message</td></tr>
+    <tr><td><code>-p, --path</code></td><td>Get path of the package</td></tr>
+    <tr><td><code>-d, --dir</code></td><td>Give the directory path of the package (for local packages)</td></tr>
+    <tr><td><code>-e, --edit</code></td><td>Open the path in users text editor</td></tr>
+  </table>
+</div>
+<div class="command-card sub">
+  <h3>add</h3>
+  <p>Adds a package requirement to project.envman in the current directory</p>
+  <div class="usage"><strong>Usage:</strong> add &lt;package alias&gt; &lt;destination path&gt;</div>
+</div>
+<div class="command-card sub">
+  <h3>drop</h3>
+  <p>Removes a package entry from project.envman in the current directory</p>
+  <div class="usage"><strong>Usage:</strong> drop &lt;package alias&gt;</div>
+</div>
+<div class="command-card sub">
+  <h3>register</h3>
+  <p>Registers a file/directory/url or .envman.package as a package on global package registery</p>
+  <div class="usage"><strong>Usage:</strong> register &lt;package alias&gt; &lt;package path&gt; OR &lt;package_file&gt;.envman.package</div>
+</div>
+<div class="command-card sub">
+  <h3>inspect</h3>
+  <p>Shows detailed information about a local project package dependency</p>
+  <div class="usage"><strong>Usage:</strong> inspect [options]</div>
+</div>
+<div class="command-card sub">
+  <h3>run</h3>
+  <p>Runs an action (like &apos;run&apos; or &apos;build&apos;) defined in a package&apos;s metadata</p>
+  <div class="usage"><strong>Usage:</strong> run &lt;package alias&gt; [action] [args...]</div>
+</div>
+<div class="command-card sub">
+  <h3>check</h3>
+  <p>Checks packages in project.envman without installing</p>
+  <div class="usage"><strong>Usage:</strong> check [target directory path]</div>
+  <h4>Options</h4>
+  <table>
+    <tr><th>Flag</th><th>Description</th></tr>
+    <tr><td><code>-h, --help</code></td><td>Show this help message</td></tr>
+    <tr><td><code>-fix, --fix</code></td><td>Removes unregistered (unknown) packages from packages.envman file</td></tr>
+    <tr><td><code>-d, --details</code></td><td>Gives more details about the project</td></tr>
+  </table>
+</div>
+<div class="command-card sub">
+  <h3>install</h3>
+  <p>Installs packages from project.envman into the current directory</p>
+  <div class="usage"><strong>Usage:</strong> install [target directory path]</div>
+  <h4>Options</h4>
+  <table>
+    <tr><th>Flag</th><th>Description</th></tr>
+    <tr><td><code>-h, --help</code></td><td>Show this help message</td></tr>
+    <tr><td><code>-s, --symlink</code></td><td>Use symlinks for local packages instead of copying</td></tr>
+  </table>
+</div>
+<div class="command-card sub">
+  <h3>upgrade</h3>
+  <p>Upgrades packages from project.envman by checking if the source is modified</p>
+  <div class="usage"><strong>Usage:</strong> upgrade [target directory path]</div>
+  <h4>Options</h4>
+  <table>
+    <tr><th>Flag</th><th>Description</th></tr>
+    <tr><td><code>-h, --help</code></td><td>Show this help message</td></tr>
+    <tr><td><code>-s, --symlink</code></td><td>Use symlinks for local packages instead of copying</td></tr>
+  </table>
+</div>
+<div class="command-card sub">
+  <h3>remove</h3>
+  <p>Removes a package from the global registry</p>
+  <div class="usage"><strong>Usage:</strong> remove &lt;package alias&gt;</div>
+</div>
+<div class="command-card sub">
+  <h3>list</h3>
+  <p>List all packages in global registery</p>
+  <div class="usage"><strong>Usage:</strong> list [options]</div>
+</div>
+</div>
+<div class="command-card sub">
+  <h2>project</h2>
+  <p>Manage project configuration (project.envman)</p>
+  <div class="usage"><strong>Usage:</strong> project [options]</div>
+</div>
+<div class="subcommands">
+<div class="command-card sub">
+  <h3>info</h3>
+  <p>Display information about the current project</p>
+  <div class="usage"><strong>Usage:</strong> info [options]</div>
+</div>
+<div class="command-card sub">
+  <h3>init</h3>
+  <p>Initialize a new project in the current directory</p>
+  <div class="usage"><strong>Usage:</strong> init [options]</div>
+</div>
+</div>
+<div class="command-card sub">
+  <h2>path</h2>
+  <p>Show the save path of envman or manage paths</p>
+  <div class="usage"><strong>Usage:</strong> path </div>
+</div>
+<div class="subcommands">
+<div class="command-card sub">
+  <h3>add</h3>
+  <p>Add a directory or file path with a slug</p>
+  <div class="usage"><strong>Usage:</strong> add &lt;slug&gt; &lt;path&gt;</div>
+</div>
+<div class="command-card sub">
+  <h3>delete</h3>
+  <p>Delete a directory or file path for a slug</p>
+  <div class="usage"><strong>Usage:</strong> delete &lt;slug&gt;</div>
+</div>
+<div class="command-card sub">
+  <h3>set</h3>
+  <p>Sets the path for the current shell or permanently</p>
+  <div class="usage"><strong>Usage:</strong> set &lt;slug&gt; [-p|--path] [-g|--global]</div>
+  <h4>Options</h4>
+  <table>
+    <tr><th>Flag</th><th>Description</th></tr>
+    <tr><td><code>-h, --help</code></td><td>Show this help message</td></tr>
+    <tr><td><code>-p, --path</code></td><td>Adds to current shell PATH (prints set command)</td></tr>
+    <tr><td><code>-g, --global</code></td><td>Adds with setx permanently (Windows only)</td></tr>
+  </table>
+</div>
+<div class="command-card sub">
+  <h3>search</h3>
+  <p>Search paths by slug or value</p>
+  <div class="usage"><strong>Usage:</strong> search &lt;query&gt;</div>
+</div>
+<div class="command-card sub">
+  <h3>get</h3>
+  <p>Gets the path of a slug entry</p>
+  <div class="usage"><strong>Usage:</strong> get &lt;slug&gt;</div>
+  <h4>Options</h4>
+  <table>
+    <tr><th>Flag</th><th>Description</th></tr>
+    <tr><td><code>-h, --help</code></td><td>Show this help message</td></tr>
+    <tr><td><code>-o, --open</code></td><td>Open the path in default application</td></tr>
+    <tr><td><code>-p, --path</code></td><td>Adds the path to system path</td></tr>
+    <tr><td><code>-c, --cd</code></td><td>Change directory</td></tr>
+    <tr><td><code>-e, --edit</code></td><td>Open the path in a editor</td></tr>
+  </table>
+</div>
+<div class="command-card sub">
+  <h3>edit</h3>
+  <p>Edit an existing path for a slug</p>
+  <div class="usage"><strong>Usage:</strong> edit &lt;slug&gt; &lt;path&gt;</div>
+</div>
+<div class="command-card sub">
+  <h3>list</h3>
+  <p>Lists all paths</p>
+  <div class="usage"><strong>Usage:</strong> list </div>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

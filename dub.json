@@ -8,7 +8,7 @@
 		"toml": ">=0.0.0",
 		"requests": "~>2.1.1"
 	},
-	"description": "A minimal D application.",
+	"description": "Environment/Package Manager For Your Needs",
 	"license": "proprietary",
 	"name": "envman"
 }
