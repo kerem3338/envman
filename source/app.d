@@ -6,7 +6,6 @@ Environment manager for your needs.
 Licensed under The MIT License
 **/
 import std.stdio;
-import std.getopt;
 import std.file;
 import std.path;
 import std.datetime;
@@ -37,9 +36,10 @@ import argd;
 const string COMPILED_AT = __TIMESTAMP__;
 const Version ENVMAN_VERSION = Version(0,0,2);
 const string PROJECT_FILE = "project.envman";
-const string LEGACY_PACKAGES_FILE = "packages.envman";
+const string TEMPLATE_FILE = ".envman.template";
 __gshared Instance instance;
 
+// --structs
 struct Version {
 	int major;
 	int minor;
@@ -65,7 +65,7 @@ struct Version {
 	string toString() const {
 		return format("%d.%d.%d",major,minor,patch);
 	}
-} 
+}
 
 struct PackageConfig {
 	string aliasName;
@@ -73,6 +73,16 @@ struct PackageConfig {
 	string expectedType;
 	string description;
 	string obtainFrom;
+}
+
+struct Template {
+	string name;
+	string description;
+	string[] requiredVars;
+	string[] preExecuteCmds;
+	string[] afterExecuteCmds;
+	string[string] mkFiles;
+	string[] mkDirs;
 }
 
 struct Project {
@@ -104,6 +114,16 @@ enum ConfigKey : string {
 	editor = "editor",
 	shell = "shell"
 }
+
+enum PackageFileStatus {
+	UpToDate,
+	NeedsUpgrade,
+	Modified,
+	MissingLocal,
+	SourceMissing,
+	Error
+}
+
 
 class OneFileManager {
 	Instance instance;
@@ -400,6 +420,47 @@ class Instance {
 		writeTomlTable(doc, buffer);
 
 		std.file.write(savePath, buffer.data);
+	}
+
+	TOMLValue[string] getTemplatesTable() {
+		auto doc = getConfig(false);
+		if ("templates" !in doc) {
+			TOMLValue[string] emptyTable;
+			doc["templates"] = TOMLValue(emptyTable);
+		}
+		return doc["templates"].table;
+	}
+
+	TOMLValue[string] getAvailableTemplates() {
+		auto tbl = getTemplatesTable().dup;
+		string tDir = buildPath(dirName(thisExePath()), "templates");
+		if (exists(tDir) && isDir(tDir)) {
+			foreach (string name; dirEntries(tDir, "*" ~ TEMPLATE_FILE, SpanMode.shallow)) {
+				try {
+					auto doc = parseTOML(readText(name));
+					string aliasName = baseName(name, TEMPLATE_FILE);
+					if ("name" in doc && doc["name"].type == TOML_TYPE.STRING) {
+						aliasName = doc["name"].str;
+					}
+					if ((aliasName in tbl) is null) {
+						tbl[aliasName] = TOMLValue(absolutePath(name));
+					}
+				} catch (Exception e) {}
+			}
+		}
+		return tbl;
+	}
+
+	void saveTemplatesTable(TOMLValue[string] templatesTable) {
+		auto doc = getConfig(false);
+		doc["templates"] = TOMLValue(templatesTable);
+		saveConfig(doc);
+	}
+
+	void updateTemplatesTable(void delegate(ref TOMLValue[string]) @safe updater) {
+		auto tbl = getTemplatesTable();
+		updater(tbl);
+		saveTemplatesTable(tbl);
 	}
 
 	TOMLValue[string] getPathsTable() {
@@ -941,7 +1002,7 @@ class PkgInstallCommand : Command {
 					mgr.addEntry(pkg.name, pkg.name);
 				}
 				
-				return processPackages([ "."], quiet, false, useSymlink);
+				return processPackages(["."], quiet, false, useSymlink);
 			}
 		} catch (Exception e) {
 			return CommandResult.error(e.msg);
@@ -965,6 +1026,7 @@ class PkgUpgradeCommand : Command {
 		return processPackages(args, quiet, true, hasOption("--symlink", "-s"));
 	}
 }
+
 
 class PkgCheckCommand : Command {
 	this() {
@@ -1020,16 +1082,29 @@ class PkgCheckCommand : Command {
 			if (pkg.pathKind == "url") {
 				writefln("  Status: URL Package (Cannot accurately check time, run upgrade to force fetch)");
 			} else {
-				if (!exists(pkg.path)) {
-					cwritefln("  Status: [<red>Local Source Missing</red>] (%s)", pkg.path);
-				} else if (!exists(absoluteDest)) {
-					cwritefln("  Status: [<red>Missing Locally</red>] (needs install)");
-				} else if (isSourceNewer(pkg.path, absoluteDest)) {
-					cwritefln("  Status: [<on_cyan>Needs Upgrade</on_cyan>] (Source is newer)");
-				} else {
-					cwritefln("  Status: [<green>Up to date</green>]");
+				auto status = checkFileStatus(pkg.path, absoluteDest);
+				final switch (status) with (PackageFileStatus) {
+					case UpToDate:
+						cwritefln("  Status: [<green>Up to date</green>]");
+						break;
+					case NeedsUpgrade:
+						cwritefln("  Status: [<on_cyan>Needs Upgrade</on_cyan>] (Source is newer)");
+						break;
+					case Modified:
+						cwritefln("  Status: [<yellow>Modified</yellow>] (Manually edited or newer than source)");
+						break;
+					case MissingLocal:
+						cwritefln("  Status: [<red>Missing Locally</red>] (needs install)");
+						break;
+					case SourceMissing:
+						cwritefln("  Status: [<red>Local Source Missing</red>] (%s)", pkg.path);
+						break;
+					case Error:
+						cwritefln("  Status: [<red>Error</red>]");
+						break;
 				}
 			}
+
 		}
 
 		if (hasOption("--fix", "-fix")) {
@@ -1217,7 +1292,7 @@ class PkgDropCommand : Command {
 	}
 }
 
-class PkgInspect : Command {
+class PkgInspectCommand : Command {
 	this() {
 		super("inspect");
 		description = "Shows detailed information about a local project package dependency";
@@ -1227,9 +1302,46 @@ class PkgInspect : Command {
 
 	override CommandResult onExecute(string[] args, bool verbose, bool quiet) {
 		ProjectFileManager pMgr = new ProjectFileManager();
-		return CommandResult.error("Not implemented yet.");
+		bool success;
+		string errorMsg;
+		PackageConfig[] cfg = pMgr.getPackagesConfig(quiet, success, errorMsg);
+		
+		if (!success) return CommandResult.error(errorMsg);
+		
+		string targetAlias = args[0];
+		PackageConfig* foundCfg = null;
+		
+		foreach(ref c; cfg) {
+			if (c.aliasName == targetAlias) {
+				foundCfg = &c;
+				break;
+			}
+		}
+		
+		if (foundCfg is null) {
+			return CommandResult.error("Package '" ~ targetAlias ~ "' not found in " ~ pMgr.fileName ~ ".");
+		}
+		
+		cwritefln("Dependency: <cyan>%s</cyan>", foundCfg.aliasName);
+		if (foundCfg.description.length > 0) cwritefln("\tDescription: %s", foundCfg.description);
+		if (foundCfg.dest.length > 0) cwritefln("\tDestination: %s", foundCfg.dest);
+		if (foundCfg.expectedType.length > 0) cwritefln("\tExpected Type: %s", foundCfg.expectedType);
+		if (foundCfg.obtainFrom.length > 0) cwritefln("\tObtain From: %s", foundCfg.obtainFrom);
+
+		auto gRes = instance.onefileMgr.getPackage(foundCfg.aliasName);
+		if (gRes[0]) {
+			Package pkg = gRes[1];
+			cwritefln("\n<green>Global Registry Info:</green>");
+			cwritefln("\tPath: %s", pkg.path);
+			cwritefln("\tType: %s", pkg.pathKind);
+		} else {
+			cwritefln("\n<magenta>Warning: Package '%s' is not installed in the global registry.</magenta>", foundCfg.aliasName);
+		}
+
+		return CommandResult.ok();
 	}
 }
+
 class PkgCommand : Command {
 	this() {
 		super("pkg");
@@ -1246,7 +1358,7 @@ class PkgCommand : Command {
 		registerSubCommand(new PkgRemoveCommand());
 		registerSubCommand(new PkgRunCommand());
 		registerSubCommand(new PkgImportCommand());
-		registerSubCommand(new PkgInspect());
+		registerSubCommand(new PkgInspectCommand());
 	}
 
 	override CommandResult onExecute(string[] args, bool verbose, bool quiet) {
@@ -1257,6 +1369,71 @@ class PkgCommand : Command {
 	}
 }
 
+class ExtrasQuoteCommand : Command {
+	this() {
+		super("quote");
+		description = "Random quotes from the envman's developer";
+		argCollType = ArgCollectionType.any;
+		argCount = 0;
+	}
+
+	override CommandResult onExecute(string[] args, bool verbose, bool quiet) {
+		import std.random;
+
+		string[] quotes = [
+			"No one is never gonna read that, expect for ai agents.",
+			"D is a good programming language.",
+			"Rest in peace Terry Davis.",
+			"Olmayacaklar olacakmış gibi olmamalı.",
+			"Envman is solution to all my problems (most of them).",
+			"Good luck trying to parse this file.",
+			"Sayapark değil Kipa.",
+			"Try dtools (https://github.com/kerem3338/dtools)"
+		];
+
+		writefln("Developer says: %s", choice(quotes));
+		return CommandResult.ok();
+	}
+}
+
+class ExtrasSummaryCommand : Command {
+	this() {
+		super("summary");
+		description = "Summary of you";
+		argCollType = ArgCollectionType.any;
+		argCount = 0;
+	}
+
+	override CommandResult onExecute(string[] args, bool verbose, bool quiet) {
+		Package[] pkgs = instance.onefileMgr.getAllPackages();
+		auto templates = instance.getAvailableTemplates();
+		auto paths = instance.getPathsTable();
+		auto configs = instance.getConfigValuesTable();
+
+		writefln("You have;\n\t%d total registered packages.", pkgs.length);
+		writefln("\t%d total registered templates.", templates.length);
+		writefln("\t%d total registered paths.", paths.length);
+		writefln("\t%d total registered config keys.", configs.length);
+		return CommandResult.ok();
+	}
+}
+class ExtrasCommand : Command {
+	this() {
+		super("extras");
+		description = "Extra commands that doesn't really usefull";
+		
+		registerSubCommand(new ExtrasQuoteCommand());
+		registerSubCommand(new ExtrasSummaryCommand());
+	}
+
+	override CommandResult onExecute(string[] args, bool verbose, bool quiet) {
+		if (args.length == 0)
+			return CommandResult.ok(buildHelp());
+
+		return CommandResult.error(format("Unknown command: %s\n\n%s", args[0], buildHelp()) , 1);
+	}
+
+}
 class ConfigSetCommand : Command {
 	this() {
 		super("set");
@@ -1418,6 +1595,7 @@ class ProjectInitCommand : Command {
 	this() {
 		super("init");
 		description = "Initialize a new project in the current directory";
+		addOption("--name", "-n", "Project Name", "name");
 	}
 
 	override CommandResult onExecute(string[] args, bool verbose, bool quiet) {
@@ -1425,7 +1603,7 @@ class ProjectInitCommand : Command {
 		try {
 			ProjectFileManager pMgr = new ProjectFileManager(targetDir);
 			Project pj;
-			pj.name = baseName(absolutePath(targetDir));
+			pj.name = getOption("--name", "-n", baseName(absolutePath(targetDir)));
 			pj.version_ = "0.1.0";
 			if (!pMgr.init(pj)) {
 				return CommandResult.error("A " ~ pMgr.fileName ~ " file already exists in this directory.");
@@ -1443,6 +1621,245 @@ class ProjectCommand : Command {
 		description = "Manage project configuration (" ~ PROJECT_FILE ~ ")";
 		registerSubCommand(new ProjectInfoCommand());
 		registerSubCommand(new ProjectInitCommand());
+	}
+
+	override CommandResult onExecute(string[] args, bool verbose, bool quiet) {
+		if (args.length == 0)
+			return CommandResult.ok(buildHelp());
+
+		return CommandResult.error(format("Unknown command: %s\n\n%s", args[0], buildHelp()) , 1);
+	}
+}
+
+class TemplateListCommand : Command {
+	this() {
+		super("list");
+		description = "List all templates that are registered";
+		argCollType = argCollType.none;
+		argCount = 0;
+	}
+
+	override CommandResult onExecute(string[] args, bool verbose, bool quiet) {
+		auto templates = instance.getAvailableTemplates();
+		if (templates.length == 0) {
+			if (!quiet) writeln("No templates found in global registry.");
+			return CommandResult.ok();
+		}
+
+		if (!quiet) writefln("Found %d template(s) in global registry:", templates.length);
+		foreach (name, val; templates) {
+			writefln("- %s -> %s", name, val.str);
+		}
+		return CommandResult.ok();
+	}
+}
+
+class TemplateRegisterCommand : Command {
+	this() {
+		super("register");
+		description = "Register a template file to the global registry";
+		usage = "<file.envman.template> [alias]";
+		argCollType = ArgCollectionType.minimum;
+		argCount = 1;
+	}
+
+	override CommandResult onExecute(string[] args, bool verbose, bool quiet) {
+		string templatePath = absolutePath(args[0]);
+		if (!exists(templatePath)) return CommandResult.error("File not found: " ~ templatePath);
+		
+		string aliasName;
+		if (args.length > 1) {
+			aliasName = args[1];
+		} else {
+			try {
+				auto doc = parseTOML(readText(templatePath));
+				if ("name" in doc && doc["name"].type == TOML_TYPE.STRING) {
+					aliasName = doc["name"].str;
+				} else {
+					aliasName = baseName(templatePath, TEMPLATE_FILE);
+				}
+			} catch (Exception e) {
+				return CommandResult.error("Failed to parse template file: " ~ e.msg);
+			}
+		}
+		
+		try {
+			instance.updateTemplatesTable((ref templates) {
+				templates[aliasName] = TOMLValue(templatePath);
+			});
+			return CommandResult.ok("Registered template '" ~ aliasName ~ "' -> " ~ templatePath);
+		} catch (Exception e) {
+			return CommandResult.error("Failed to register template: " ~ e.msg);
+		}
+	}
+}
+
+class TemplateRemoveCommand : Command {
+	this() {
+		super("remove");
+		description = "Removes a template from the global registry";
+		usage = "<template alias>";
+		argCollType = ArgCollectionType.exact;
+		argCount = 1;
+	}
+
+	override CommandResult onExecute(string[] args, bool verbose, bool quiet) {
+		string aliasName = args[0];
+		bool removed = false;
+		try {
+			instance.updateTemplatesTable((ref templates) {
+				if ((aliasName in templates) !is null) {
+					templates.remove(aliasName);
+					removed = true;
+				}
+			});
+			if (removed) return CommandResult.ok("Template '" ~ aliasName ~ "' removed.");
+			return CommandResult.error("Template '" ~ aliasName ~ "' not found.");
+		} catch (Exception e) {
+			return CommandResult.error("Failed to remove template: " ~ e.msg);
+		}
+	}
+}
+
+class TemplateCreateCommand : Command {
+	this() {
+		super("create");
+		description = "Creates a new project from a registered template";
+		usage = "<template name> <dest dir> [varName=value...]";
+		argCollType = ArgCollectionType.minimum;
+		argCount = 2;
+	}
+
+	override CommandResult onExecute(string[] args, bool verbose, bool quiet) {
+		string templateName = args[0];
+		string destDir = absolutePath(args[1]);
+		
+		auto templates = instance.getAvailableTemplates();
+		if ((templateName in templates) is null) {
+			return CommandResult.error("Template '" ~ templateName ~ "' not found.");
+		}
+		
+		string templatePath = templates[templateName].str;
+		
+		Template t;
+		try {
+			t = parseTemplateFile(templatePath);
+		} catch (Exception e) {
+			return CommandResult.error("Failed to parse template: " ~ e.msg);
+		}
+		
+		string[string] vars;
+		foreach(key, val; optionValues) {
+			if (key.startsWith("--")) {
+				vars[key[2..$]] = val;
+			} else if (key.startsWith("-")) {
+				vars[key[1..$]] = val;
+			}
+		}
+		
+		foreach(arg; args[2..$]) {
+			auto parts = arg.split("=");
+			if (parts.length >= 2) {
+				vars[parts[0]] = parts[1..$].join("=");
+			}
+		}
+		
+		foreach(reqVar; t.requiredVars) {
+			if ((reqVar in vars) is null) {
+				return CommandResult.error("Missing required template variable: " ~ reqVar);
+			}
+		}
+		
+		if (!exists(destDir)) {
+			mkdirRecurse(destDir);
+		}
+		
+		foreach(cmd; t.preExecuteCmds) {
+			auto replacedCmd = replaceVars(cmd, vars);
+			if (replacedCmd.startsWith("$")) {
+				replacedCmd = "\"" ~ thisExePath() ~ "\" " ~ replacedCmd[1..$];
+			}
+			auto pid = spawnShell(replacedCmd, null, Config.none, destDir);
+			if (wait(pid) != 0) return CommandResult.error("Command failed: " ~ replacedCmd);
+		}
+		
+		foreach(dir; t.mkDirs) {
+			auto replacedDir = replaceVars(dir, vars);
+			string absDir = buildPath(destDir, replacedDir);
+			if (!exists(absDir)) mkdirRecurse(absDir);
+		}
+		
+		foreach(fPath, fContent; t.mkFiles) {
+			auto replacedPath = replaceVars(fPath, vars);
+			auto replacedContent = replaceVars(fContent, vars);
+			
+			string absPath = buildPath(destDir, replacedPath);
+			if (!exists(dirName(absPath))) mkdirRecurse(dirName(absPath));
+			
+			std.file.write(absPath, replacedContent);
+		}
+		
+		foreach(cmd; t.afterExecuteCmds) {
+			auto replacedCmd = replaceVars(cmd, vars);
+			if (replacedCmd.startsWith("$")) {
+				replacedCmd = "\"" ~ thisExePath() ~ "\" " ~ replacedCmd[1..$];
+			}
+			auto pid = spawnShell(replacedCmd, null, Config.none, destDir);
+			if (wait(pid) != 0) return CommandResult.error("Command failed: " ~ replacedCmd);
+		}
+		
+		if (!quiet) cwritefln("<green>Template '%s' created successfully in %s</green>", templateName, destDir);
+		return CommandResult.ok();
+	}
+}
+
+class TemplateInfoCommand : Command {
+	this() {
+		super("info");
+		description = "Information about a registered template";
+		usage = "<template name>";
+		argCollType = ArgCollectionType.exact;
+		argCount = 1;
+	}
+
+	override CommandResult onExecute(string[] args, bool verbose, bool quiet) {
+		string templateName = args[0];
+		auto templates = instance.getAvailableTemplates();
+		
+		if ((templateName in templates) is null) {
+			return CommandResult.error("Template '" ~ templateName ~ "' not found.");
+		}
+		
+		string templatePath = templates[templateName].str;
+		
+		try {
+			Template t = parseTemplateFile(templatePath);
+			cwritefln("Template <cyan>%s</cyan>", t.name);
+			if (t.description.length > 0) cwritefln("\tDescription: %s", t.description);
+			cwritefln("\tPath: %s", templatePath);
+			if (t.requiredVars.length > 0) cwritefln("\tRequired Variables: %s", t.requiredVars.join(", "));
+			if (t.preExecuteCmds.length > 0) cwritefln("\tPre-Execute Commands: %d", t.preExecuteCmds.length);
+			if (t.afterExecuteCmds.length > 0) cwritefln("\tAfter-Execute Commands: %d", t.afterExecuteCmds.length);
+			if (t.mkDirs.length > 0) cwritefln("\tDirectories to Create: %d", t.mkDirs.length);
+			if (t.mkFiles.length > 0) cwritefln("\tFiles to Create: %d", t.mkFiles.length);
+		} catch (Exception e) {
+			return CommandResult.error("Failed to inspect template: " ~ e.msg);
+		}
+		
+		return CommandResult.ok();
+	}
+}
+
+class TemplateCommand : Command {
+	this() {
+		super("template");
+		description = "Project templates";
+
+		registerSubCommand(new TemplateRegisterCommand());
+		registerSubCommand(new TemplateListCommand());
+		registerSubCommand(new TemplateRemoveCommand());
+		registerSubCommand(new TemplateCreateCommand());
+		registerSubCommand(new TemplateInfoCommand());
 	}
 
 	override CommandResult onExecute(string[] args, bool verbose, bool quiet) {
@@ -1478,7 +1895,7 @@ class RootCommand : Command {
 	this() { 
 		super("envman"); 
 		description = format("Envman %s, environment/package manager", ENVMAN_VERSION);
-		
+
 		addOption("--verbose", "-V", "Enable verbose output");
 		addOption("--quiet", "-q", "Suppress output");
 		addOption("--gen-docs", "-gd", "Generate markdown documentation for all commands");
@@ -1489,25 +1906,34 @@ class RootCommand : Command {
 		registerSubCommand(new PathCommand());
 		registerSubCommand(new PkgCommand());
 		registerSubCommand(new ProjectCommand());
+		registerSubCommand(new TemplateCommand());
 		registerSubCommand(new ConfigCommand());
 		registerSubCommand(new InfoCommand());
+		registerSubCommand(new ExtrasCommand());
 	}
 
 	override protected CommandResult onExecute(string[] args, bool verbose, bool quiet) {
+		bool docGenerated = false;
 		if (hasOption("--gen-docs", "-gd")) {
 			std.file.write("DOCUMENTATION.md", buildMarkdown());
 			cwritefln("<green>Documentation generation complete!</green> Saved to DOCUMENTATION.md");
-			return CommandResult.ok();
+			docGenerated = true;
 		}
 
 		if (hasOption("--gen-html", "-gh")) {
 			std.file.write("DOCUMENTATION.html", this.buildHTML());
 			cwritefln("<green>HTML Documentation generation complete!</green> Saved to DOCUMENTATION.html");
-			return CommandResult.ok();
+			docGenerated = true;
 		}
 
+		if (docGenerated) return CommandResult.ok();
+
 		if (hasOption("--version", "-v")) {
-			if (hasOption("--quiet","-q")) writeln(ENVMAN_VERSION);
+			if (quiet) {
+				writeln(ENVMAN_VERSION);
+				return CommandResult.ok();
+			}
+			
 			cwritefln("envman, version <green>%s</green>",ENVMAN_VERSION);
 			return CommandResult.ok();
 		}
@@ -1522,6 +1948,14 @@ class RootCommand : Command {
 
 // --functions
 // functions
+
+string replaceVars(string content, string[string] vars) {
+	string result = content;
+	foreach(k, v; vars) {
+		result = result.replace("{{" ~ k ~ "}}", v);
+	}
+	return result;
+}
 
 int levenshtein(string a, string b)
 {
@@ -1635,6 +2069,36 @@ Package parsePackageFile(string filePath) {
 	return p;
 }
 
+Template parseTemplateFile(string filePath) {
+	if (!exists(filePath)) throw new Exception("Template file not found: " ~ filePath);
+	auto doc = parseTOML(readText(filePath));
+	
+	Template t;
+	if ("name" in doc && doc["name"].type == TOML_TYPE.STRING) {
+		t.name = doc["name"].str;
+	} else {
+		t.name = baseName(filePath, TEMPLATE_FILE);
+	}
+
+	if ("description" in doc && doc["description"].type == TOML_TYPE.STRING) {
+		t.description = doc["description"].str;
+	}
+
+	t.requiredVars = extractStringArray(doc.table, "requiredVars");
+	t.preExecuteCmds = extractStringArray(doc.table, "preExecuteCmds");
+	t.afterExecuteCmds = extractStringArray(doc.table, "afterExecuteCmds");
+	t.mkDirs = extractStringArray(doc.table, "mkDirs");
+
+	if ("mkFiles" in doc && doc["mkFiles"].type == TOML_TYPE.TABLE) {
+		foreach (k, v; doc["mkFiles"].table) {
+			if (v.type == TOML_TYPE.STRING) {
+				t.mkFiles[k] = v.str;
+			}
+		}
+	}
+	return t;
+}
+
 void runPackageAction(Package pkg, string targetDir, string action, string[] extraArgs) {
 	string actionCmd;
 
@@ -1689,12 +2153,12 @@ void copyRecursively(string source, string dest) {
 	}
 }
 
-bool isSourceNewer(string source, string dest) {
-	if (!exists(dest)) return true;
-	if (!exists(source)) return false;
+PackageFileStatus checkFileStatus(string source, string dest) {
+	if (!exists(source)) return PackageFileStatus.SourceMissing;
+	if (!exists(dest)) return PackageFileStatus.MissingLocal;
 
 	if (isDir(source)) {
-		if (!isDir(dest)) return true;
+		if (!isDir(dest)) return PackageFileStatus.NeedsUpgrade;
 
 		SysTime destNewest;
 		bool destHasFiles = false;
@@ -1703,17 +2167,32 @@ bool isSourceNewer(string source, string dest) {
 			auto ts = timeLastModified(name);
 			if (ts > destNewest) destNewest = ts;
 		}
-		if (!destHasFiles) return true;
+		if (!destHasFiles) return PackageFileStatus.NeedsUpgrade;
 
 		foreach (string name; dirEntries(source, SpanMode.depth)) {
-			if (timeLastModified(name) > destNewest) return true;
+			if (timeLastModified(name) > destNewest) return PackageFileStatus.NeedsUpgrade;
 		}
-		return false;
+		return PackageFileStatus.UpToDate;
 	} else {
-		if (isDir(dest)) return true;
-		return timeLastModified(source) > timeLastModified(dest);
+		if (isDir(dest)) return PackageFileStatus.NeedsUpgrade;
+		
+		string sourceHash = hashFile(source);
+		string destHash = hashFile(dest);
+
+		if (sourceHash == destHash) return PackageFileStatus.UpToDate;
+
+		if (timeLastModified(source) > timeLastModified(dest))
+			return PackageFileStatus.NeedsUpgrade;
+		
+		return PackageFileStatus.Modified;
 	}
 }
+
+bool isSourceNewer(string source, string dest) {
+	PackageFileStatus status = checkFileStatus(source, dest);
+	return status == PackageFileStatus.NeedsUpgrade || status == PackageFileStatus.Modified || status == PackageFileStatus.MissingLocal;
+}
+
 
 void createSymlink(string target, string link) {
 	version(Windows) {

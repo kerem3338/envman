@@ -45,6 +45,23 @@
   <div class="usage"><strong>Usage:</strong> info [options]</div>
 </div>
 <div class="command-card sub">
+  <h2>extras</h2>
+  <p>Extra commands that doesn&apos;t really usefull</p>
+  <div class="usage"><strong>Usage:</strong> extras [options]</div>
+</div>
+<div class="subcommands">
+<div class="command-card sub">
+  <h3>quote</h3>
+  <p>Random quotes from the envman&apos;s developer</p>
+  <div class="usage"><strong>Usage:</strong> quote [options]</div>
+</div>
+<div class="command-card sub">
+  <h3>summary</h3>
+  <p>Summary of you</p>
+  <div class="usage"><strong>Usage:</strong> summary [options]</div>
+</div>
+</div>
+<div class="command-card sub">
   <h2>config</h2>
   <p>Manage user configuration</p>
   <div class="usage"><strong>Usage:</strong> config [options]</div>
@@ -184,6 +201,38 @@
 </div>
 </div>
 <div class="command-card sub">
+  <h2>template</h2>
+  <p>Project templates</p>
+  <div class="usage"><strong>Usage:</strong> template [options]</div>
+</div>
+<div class="subcommands">
+<div class="command-card sub">
+  <h3>create</h3>
+  <p>Creates a new project from a registered template</p>
+  <div class="usage"><strong>Usage:</strong> create &lt;template name&gt; &lt;dest dir&gt; [varName=value...]</div>
+</div>
+<div class="command-card sub">
+  <h3>remove</h3>
+  <p>Removes a template from the global registry</p>
+  <div class="usage"><strong>Usage:</strong> remove &lt;template alias&gt;</div>
+</div>
+<div class="command-card sub">
+  <h3>list</h3>
+  <p>List all templates that are registered</p>
+  <div class="usage"><strong>Usage:</strong> list [options]</div>
+</div>
+<div class="command-card sub">
+  <h3>info</h3>
+  <p>Information about a registered template</p>
+  <div class="usage"><strong>Usage:</strong> info &lt;template name&gt;</div>
+</div>
+<div class="command-card sub">
+  <h3>register</h3>
+  <p>Register a template file to the global registry</p>
+  <div class="usage"><strong>Usage:</strong> register &lt;file.envman.template&gt; [alias]</div>
+</div>
+</div>
+<div class="command-card sub">
   <h2>project</h2>
   <p>Manage project configuration (project.envman)</p>
   <div class="usage"><strong>Usage:</strong> project [options]</div>
@@ -198,6 +247,12 @@
   <h3>init</h3>
   <p>Initialize a new project in the current directory</p>
   <div class="usage"><strong>Usage:</strong> init [options]</div>
+  <h4>Options</h4>
+  <table>
+    <tr><th>Flag</th><th>Description</th></tr>
+    <tr><td><code>-h, --help</code></td><td>Show this help message</td></tr>
+    <tr><td><code>-n, --name=&lt;name&gt;</code></td><td>Project Name</td></tr>
+  </table>
 </div>
 </div>
 <div class="command-card sub">

@@ -1,0 +1,14 @@
+name = "d_app"
+description = "Minimal D application project with envman support"
+requiredVars = ["projectName"]
+preExecuteCmds = []
+afterExecuteCmds = ["$project init"]
+mkDirs = []
+
+[mkFiles]
+"app.d" = """import std.stdio;
+
+void main() {
+	writeln("{{projectName}}");
+}
+"""

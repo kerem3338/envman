@@ -29,6 +29,44 @@ Information about the envman
 |--------|-------------|
 | `-h, --help` | Show this help message |
 
+## `extras`
+
+Extra commands that doesn't really usefull
+
+**Usage:** `extras [options]`
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
+### Subcommands
+
+### `quote`
+
+Random quotes from the envman's developer
+
+**Usage:** `quote [options]`
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
+### `summary`
+
+Summary of you
+
+**Usage:** `summary [options]`
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
 ## `config`
 
 Manage user configuration
@@ -271,6 +309,80 @@ List all packages in global registery
 |--------|-------------|
 | `-h, --help` | Show this help message |
 
+## `template`
+
+Project templates
+
+**Usage:** `template [options]`
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
+### Subcommands
+
+### `create`
+
+Creates a new project from a registered template
+
+**Usage:** `create <template name> <dest dir> [varName=value...]`
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
+### `remove`
+
+Removes a template from the global registry
+
+**Usage:** `remove <template alias>`
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
+### `list`
+
+List all templates that are registered
+
+**Usage:** `list [options]`
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
+### `info`
+
+Information about a registered template
+
+**Usage:** `info <template name>`
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
+### `register`
+
+Register a template file to the global registry
+
+**Usage:** `register <file.envman.template> [alias]`
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show this help message |
+
 ## `project`
 
 Manage project configuration (project.envman)
@@ -308,6 +420,7 @@ Initialize a new project in the current directory
 | Option | Description |
 |--------|-------------|
 | `-h, --help` | Show this help message |
+| `-n, --name=&lt;name&gt;` | Project Name |
 
 ## `path`
 

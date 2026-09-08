@@ -2,7 +2,7 @@
 
 **Environment Manager for Your Needs.**
 
-`envman` is a lightweight, purely D-based developer environment toolkit and global package manager. It acts as both a system-wide "path aliases" tool and a local project package manager bridging the gap between local boilerplates, remote dependency scaffolding, and project setups.
+`envman` is a lightweight, purely D-based developer environment toolkit and global package manager. It acts as both a system-wide multi-functionality tool and a local project package manager bridging the gap between local boilerplates, remote dependency scaffolding, and project setups.
 
 *Created By Kerem ATA (zoda), and published under the MIT License*
 
@@ -12,12 +12,11 @@
 
 ### 1. Global Path Registery (`envman path`)
 Manage quick-references to important directories on your machine globally.
-- Store deep filesystem paths under short "slugs"
-- Fuzzy search through stored paths (Levenshtein distance + substring match highlighting)
-- Open paths in your file explorer or inject them into the system `PATH`
+- Store deep filesystem paths under short slugs
+- Fuzzy search through stored paths
 
 ### 2. Global & Local Package Manager (`envman pkg`)
-Store raw files, directories, or URLs in a central registry, and pull them dynamically into individual project folders using a `project.envman` TOML configuration.
+Store raw files, directories, or URLs in a central registry, and pull them dynamically into individual project folders using a `project.envman` file.
 - **Intelligent Updating**: Checks modification timestamps to selectively upgrade parts of your boilerplates.
 - **URL Handling**: Scaffolds files directly from web URLs effortlessly.
 - **Check Command**: Scan a project directory to see if packages are mismatched, out of date, or missing.

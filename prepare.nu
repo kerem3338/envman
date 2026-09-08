@@ -2,7 +2,7 @@ def main [] {
     print "Starting project preparation..."
 
     print "Building project..."
-    dub build --parallel
+    dub build --parallel -b release
     if $env.LAST_EXIT_CODE != 0 {
         error make { msg: "Build failed" }
     }
@@ -27,11 +27,11 @@ def main [] {
     }
 
     print "Generating Markdown documentation..."
-    run-external $exe_path "--gd"
+    run-external $exe_path "-gd"
     if $env.LAST_EXIT_CODE != 0 { error make { msg: "Markdown generation failed" } }
 
     print "Generating HTML documentation..."
-    run-external $exe_path "--gh"
+    run-external $exe_path "-gh"
     if $env.LAST_EXIT_CODE != 0 { error make { msg: "HTML generation failed" } }
 
     print ""
